@@ -1,3 +1,4 @@
+
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UIS = game:GetService("UserInputService")
@@ -2594,7 +2595,7 @@ function M.setupHeadIndicator(char)
     discordLbl.Size = UDim2.new(1, 0, 0, 28)
     discordLbl.Position = UDim2.new(0, 0, 0, 0)
     discordLbl.BackgroundTransparency = 1
-    discordLbl.Text = "discord.gg/FQRR8hNQq"
+    discordLbl.Text = "discord.gg/xss7VmC2D"
     discordLbl.TextColor3 = Color3.fromRGB(224, 36, 48)
     discordLbl.Font = Enum.Font.GothamBlack
     discordLbl.TextSize = 18
@@ -2653,7 +2654,7 @@ function M.updateHeadTheme()
         for _, c in ipairs(M.headIndicator.discord:GetChildren()) do
             if c:IsA("UIGradient") or c:IsA("UIStroke") then pcall(function() c:Destroy() end) end
         end
-        M.headIndicator.discord.Text = "discord.gg/FQRR8hNQq"
+        M.headIndicator.discord.Text = "discord.gg/xss7VmC2D"
         M.headIndicator.discord.TextColor3 = Color3.fromRGB(224, 36, 48)
         M.headIndicator.discord.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
         M.headIndicator.discord.TextStrokeTransparency = 0
@@ -10292,7 +10293,7 @@ function M.applyChromeTheme()
         local disc = hdr:FindFirstChild("HeaderDiscord") or M.headerDiscordLbl
         if disc and disc:IsA("TextLabel") then
             disc.Visible = true
-            disc.Text = "discord.gg/FQRR8hNQq"
+            disc.Text = "discord.gg/xss7VmC2D"
             disc.Position = UDim2.new(0, 62, 0, 36)
             disc.Size = UDim2.new(1, -110, 0, 18)
             disc.BackgroundTransparency = 1
@@ -11723,7 +11724,7 @@ function M.buildKillLaggerUI()
 
     local discordTag = Instance.new("TextLabel", main)
     discordTag.Size = UDim2.new(1,-120,0,12); discordTag.Position = UDim2.new(0,14,0,24)
-    discordTag.BackgroundTransparency = 1; discordTag.Text = "gg/vynxduels"; discordTag.TextColor3 = ((M.accentColor and M.accentColor()) or Color3.fromRGB(224, 36, 48)); discordTag:SetAttribute("BrandAccent", true)
+    discordTag.BackgroundTransparency = 1; discordTag.Text = "discord.gg/xss7VmC2D"; discordTag.TextColor3 = ((M.accentColor and M.accentColor()) or Color3.fromRGB(224, 36, 48)); discordTag:SetAttribute("BrandAccent", true)
     discordTag.Font = Enum.Font.GothamBold; discordTag.TextSize = 10; discordTag.TextXAlignment = Enum.TextXAlignment.Left; discordTag.ZIndex = 5
 
     local body = Instance.new("Frame", main)
@@ -12864,7 +12865,7 @@ end
     discordLbl.Position = UDim2.new(0, 58, 0, 34)
     discordLbl.Size = UDim2.new(1, -110, 0, 20)
     discordLbl.BackgroundTransparency = 1
-    discordLbl.Text = "discord.gg/FQRR8hNQq"
+    discordLbl.Text = "discord.gg/xss7VmC2D"
     discordLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
     discordLbl.TextTransparency = 0
     discordLbl.TextStrokeTransparency = 1
@@ -12891,7 +12892,7 @@ end
         end
         if discordLbl and discordLbl.Parent then
             discordLbl.Visible = true
-            discordLbl.Text = "discord.gg/FQRR8hNQq"
+            discordLbl.Text = "discord.gg/xss7VmC2D"
             discordLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
             discordLbl.TextTransparency = 0
             discordLbl.TextSize = 14
