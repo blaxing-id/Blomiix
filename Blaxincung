@@ -1,5 +1,4 @@
 
-
 do
   local lfwm_7e97626092df4313 = "LFWM1_XFYgxFhwlXshNr89c7mk9e7UnYTV0AVw"
   if false then error(lfwm_7e97626092df4313) end
@@ -2601,7 +2600,7 @@ function M.setupHeadIndicator(char)
     discordLbl.Size = UDim2.new(1, 0, 0, 28)
     discordLbl.Position = UDim2.new(0, 0, 0, 0)
     discordLbl.BackgroundTransparency = 1
-    discordLbl.Text = "discord.gg/xss7VmC2D"
+    discordLbl.Text = "discord.gg/FQRR8hNQq"
     discordLbl.TextColor3 = Color3.fromRGB(224, 36, 48)
     discordLbl.Font = Enum.Font.GothamBlack
     discordLbl.TextSize = 18
@@ -2660,7 +2659,7 @@ function M.updateHeadTheme()
         for _, c in ipairs(M.headIndicator.discord:GetChildren()) do
             if c:IsA("UIGradient") or c:IsA("UIStroke") then pcall(function() c:Destroy() end) end
         end
-        M.headIndicator.discord.Text = "discord.gg/xss7VmC2D"
+        M.headIndicator.discord.Text = "discord.gg/FQRR8hNQq"
         M.headIndicator.discord.TextColor3 = Color3.fromRGB(224, 36, 48)
         M.headIndicator.discord.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
         M.headIndicator.discord.TextStrokeTransparency = 0
@@ -4107,6 +4106,7 @@ function M.stopBatAimbot()
     if M.aimbotConn then pcall(function() M.aimbotConn:Disconnect() end); M.aimbotConn=nil end
     if M._aimbotCharConn then pcall(function() M._aimbotCharConn:Disconnect() end); M._aimbotCharConn=nil end
     if M._specBypass and M._specBypass.conn then pcall(function() M._specBypass.conn:Disconnect() end); M._specBypass.conn=nil end
+    if M.bypassAimbotEnabled and M.stopBypassAimbot then pcall(function() M.stopBypassAimbot() end) end
     pcall(function() RunService:UnbindFromRenderStep("VynxAimbotRotCam") end)
     do
         local char=player.Character; local root=char and char:FindFirstChild("HumanoidRootPart"); local hum=char and char:FindFirstChildOfClass("Humanoid")
@@ -4239,23 +4239,11 @@ function M._specBypassTick()
 end
 
 function M.startSpectrumBypassAimbot()
-    if not M.safeModeTryStart() then return end
-    if M.aimbotConn then pcall(function() M.aimbotConn:Disconnect() end); M.aimbotConn = nil end
-    if M._specBypass.conn then pcall(function() M._specBypass.conn:Disconnect() end); M._specBypass.conn = nil end
-    if M.batTPEnabled and M.stopBatTPAimbot then pcall(function() M.stopBatTPAimbot() end) end
-    if M.bypassAimbotEnabled and M.stopBypassAimbot then pcall(function() M.stopBypassAimbot() end) end
-    if M.autoLeftEnabled then M.autoLeftEnabled=false; if M.autoLeftSetVisual then M.autoLeftSetVisual(false) end; M.stopAutoLeft() end
-    if M.autoRightEnabled then M.autoRightEnabled=false; if M.autoRightSetVisual then M.autoRightSetVisual(false) end; M.stopAutoRight() end
-    M._autoTPWasEnabledForBat = false
-    if M.autoTPEnabled then M._autoTPWasEnabledForBat=true; M.stopAutoTP(); if M.setAutoTPVisual then M.setAutoTPVisual(false) end end
-    M.autoBatEnabled = true
-    M.autoSwingEnabled = true
+    -- Redirected to Bloomix Anti Bypass aimbot logic
     M.batAimbotMode = "Bypass"
-    local hum0 = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-    if hum0 then pcall(function() hum0.AutoRotate = false end) end
-    M._specBypass.conn = RunService.RenderStepped:Connect(function()
-        M._specBypassTick()
-    end)
+    if M.startBypassAimbot then
+        M.startBypassAimbot()
+    end
     if M.autoBatSetVisual then pcall(function() M.autoBatSetVisual(true) end) end
     if M.mobBtnRefs and M.mobBtnRefs.autoBat then pcall(function() M.mobBtnRefs.autoBat(true) end) end
 end
@@ -5370,27 +5358,17 @@ function M.toggleBatTPAimbot()
 end
 
 function M.startBypassAimbot()
+    -- Bloomix Anti Bypass aimbot (Bat V2 style): RenderStepped chase + velocity lerp
     if M.safeModeTryStart and not M.safeModeTryStart() then return end
     if M.autoBatEnabled and M.stopBatAimbot then pcall(function() M.stopBatAimbot() end) end
     if M.batTPEnabled and M.stopBatTPAimbot then pcall(function() M.stopBatTPAimbot() end) end
     if M.bypassAimbotConn then pcall(function() M.bypassAimbotConn:Disconnect() end); M.bypassAimbotConn = nil end
 
-    M._abCfg = {
-        Speed = 59,
-        VertSpeed = 52,
-        Dist = -2.8,
-        Height = 4.75,
-        VertOffset = 1,
-        TurnSpeed = 285,
-        MaxTurnRate = 28,
-    }
-    M._abTarget = nil
-    M._abLastScan = 0
-    M._abEquipped = false
-
     M.autoSwingEnabled = true
     M.bypassAimbotEnabled = true
+    M.batAimbotMode = "Bypass"
     pcall(function() if M.syncCombatAntiBat then M.syncCombatAntiBat() end end)
+    pcall(function() if M.syncCombatAntiDie then M.syncCombatAntiDie() end end)
 
     if M.autoLeftEnabled then
         M.autoLeftEnabled = false
@@ -5409,17 +5387,58 @@ function M.startBypassAimbot()
         if M.setAutoTPVisual then M.setAutoTPVisual(false) end
     end
 
-    local function getAntiBypassTarget()
+    M._abSwingCD = false
+    M._abPrevAutoRotate = nil
+    local slapList = {"Bat","Slap","Iron Slap","Gold Slap","Diamond Slap","Emerald Slap","Ruby Slap","Dark Matter Slap","Flame Slap","Nuclear Slap","Galaxy Slap","Glitched Slap"}
+
+    local function findBat()
         local char = player.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        if not root then return nil end
-        local now = tick()
-        if now - (M._abLastScan or 0) <= 0.1 and M._abTarget and M._abTarget.Parent then
-            local hum = M._abTarget.Parent:FindFirstChildOfClass("Humanoid")
-            if hum and hum.Health > 0 then return M._abTarget end
+        if not char then return nil end
+        for _, name in ipairs(slapList) do
+            local t = char:FindFirstChild(name)
+            if t and t:IsA("Tool") then return t end
         end
-        M._abLastScan = now
-        M._abTarget = nil
+        local bp = player:FindFirstChildOfClass("Backpack")
+        if bp then
+            for _, name in ipairs(slapList) do
+                local t = bp:FindFirstChild(name)
+                if t and t:IsA("Tool") then
+                    local hum = char:FindFirstChildOfClass("Humanoid")
+                    if hum then pcall(function() hum:EquipTool(t) end) end
+                    return t
+                end
+            end
+        end
+        for _, ch in ipairs(char:GetChildren()) do
+            if ch:IsA("Tool") then
+                local n = ch.Name:lower()
+                if n:find("bat") or n:find("slap") then return ch end
+            end
+        end
+        return nil
+    end
+
+    local function trySwing()
+        if M._abSwingCD then return end
+        M._abSwingCD = true
+        pcall(function()
+            local char = player.Character
+            if not char then return end
+            local bat = findBat()
+            if bat then
+                if bat.Parent ~= char then
+                    local hum = char:FindFirstChildOfClass("Humanoid")
+                    if hum then pcall(function() hum:EquipTool(bat) end) end
+                end
+                pcall(function() bat:Activate() end)
+            end
+        end)
+        task.delay(0.35, function() M._abSwingCD = false end)
+    end
+
+    local function getClosest()
+        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if not root then return nil, math.huge end
         local closest, minDist = nil, math.huge
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr ~= player and plr.Character then
@@ -5434,87 +5453,84 @@ function M.startBypassAimbot()
                 end
             end
         end
-        M._abTarget = closest
-        return M._abTarget
+        return closest, minDist
     end
 
-    local function ensureEquipped()
-        local char = player.Character
-        if not char then return end
-        if char:FindFirstChildOfClass("Tool") then return end
-        local bp = player:FindFirstChild("Backpack")
-        if not bp then return end
-        local bat = bp:FindFirstChild("Bat")
-        if bat then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then pcall(function() hum:EquipTool(bat) end) end
+    local function getChaseSpeed()
+        if M.laggerModeEnabled or M.laggerCarryActive then
+            return tonumber(M.laggerAimbotSpeed) or 40
         end
+        return tonumber(M.aimbotSpeed) or tonumber(M.BYPASS_SPEED) or 58
     end
 
-    local function antiBypassTick()
+    local hum0 = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    if hum0 then
+        if M._abPrevAutoRotate == nil then M._abPrevAutoRotate = hum0.AutoRotate end
+        hum0.AutoRotate = false
+    end
+
+    M.bypassAimbotConn = RunService.RenderStepped:Connect(function()
         if not M.bypassAimbotEnabled then return end
         local char = player.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        if not root or not hum then return end
-        local cfg = M._abCfg or {}
+        if not char then return end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        if hum.Health <= 0 then return end
 
-        if not M._abEquipped then
-            M._abEquipped = true
-            ensureEquipped()
+        if not char:FindFirstChildOfClass("Tool") then
+            local bat = findBat()
+            if bat then pcall(function() hum:EquipTool(bat) end) end
         end
 
-        local target = getAntiBypassTarget()
-        if target then
-            local aimTargetPos = target.Position + Vector3.new(0, cfg.VertOffset or 1, 0)
-            hum.AutoRotate = false
+        local target, targetDist = getClosest()
+        if not target then return end
 
-            local look = aimTargetPos - root.Position
-            local flatLook = Vector3.new(look.X, 0, look.Z)
-
-            if look.Magnitude > 0.01 and flatLook.Magnitude > 0.01 then
-                local targetYaw = math.deg(math.atan2(-flatLook.X, -flatLook.Z))
-                local yawDelta = (targetYaw - root.Orientation.Y + 180) % 360 - 180
-                local targetPitch = math.deg(math.atan2(look.Y, flatLook.Magnitude))
-                local pitchDelta = (targetPitch - root.Orientation.X + 180) % 360 - 180
-
-                local turn = cfg.TurnSpeed or 285
-                local maxR = cfg.MaxTurnRate or 28
-                local yawRate = math.clamp(math.rad(yawDelta) * turn, -maxR, maxR)
-                local pitchRate = math.clamp(math.rad(pitchDelta) * turn, -maxR, maxR)
-                local yawRad = math.rad(root.Orientation.Y)
-                local rightAxis = Vector3.new(math.cos(yawRad), 0, -math.sin(yawRad))
-
-                root.AssemblyAngularVelocity = Vector3.new(0, yawRate, 0) + (rightAxis * pitchRate)
-            else
-                root.AssemblyAngularVelocity = Vector3.zero
+        local myPos = root.Position
+        local targetPos = target.Position
+        -- Anti Void ghost origin if available
+        if M.antiVoidPosFor then
+            local plr = Players:GetPlayerFromCharacter(target.Parent)
+            if plr then
+                local gp = select(1, M.antiVoidPosFor(plr, targetPos))
+                if gp then targetPos = gp end
             end
-
-            local dir = look.Magnitude > 0.01 and look.Unit or Vector3.zero
-            local standPos = aimTargetPos - (dir * (cfg.Dist or -2.8)) + Vector3.new(0, cfg.Height or 4.75, 0)
-            local moveDir = standPos - root.Position
-            local hDir = Vector3.new(moveDir.X, 0, moveDir.Z)
-            local hVel = hDir.Magnitude > 0.1 and hDir.Unit * (cfg.Speed or 59) or Vector3.zero
-            local vVel = math.abs(moveDir.Y) > 0.1
-                and Vector3.new(0, math.sign(moveDir.Y) * (cfg.VertSpeed or 52), 0)
-                or Vector3.new(0, -2, 0)
-
-            root.Velocity = hVel + vVel
-            if hDir.Magnitude > 0.5 then hum:Move(hDir.Unit, false) end
-
-            if M.autoSwingEnabled ~= false then
-                local bat = char:FindFirstChild("Bat")
-                if bat and bat:IsA("Tool") then
-                    pcall(function() bat:Activate() end)
-                end
-            end
-        else
-            hum.AutoRotate = true
-            root.AssemblyAngularVelocity = Vector3.zero
         end
-    end
 
-    M.bypassAimbotConn = RunService.Heartbeat:Connect(antiBypassTick)
+        local direction = targetPos - myPos
+        local flatDir = Vector3.new(direction.X, 0, direction.Z)
+        if flatDir.Magnitude > 0 then flatDir = flatDir.Unit else flatDir = Vector3.zero end
+
+        local chaseSpeed = getChaseSpeed()
+        local desiredHeight = targetPos.Y + 3.7
+        local yVel = (desiredHeight - myPos.Y) * 19.5
+        if hum.FloorMaterial ~= Enum.Material.Air then yVel = math.max(yVel, 13) end
+        yVel = math.clamp(yVel, -70, 110)
+
+        local desiredVel = Vector3.new(flatDir.X * chaseSpeed, yVel, flatDir.Z * chaseSpeed)
+        if M.antiBatEnabled then
+            M._antiBatDesiredXZ = Vector3.new(flatDir.X * chaseSpeed, 0, flatDir.Z * chaseSpeed)
+        end
+        if not M._antiBatSpiking then
+            root.AssemblyLinearVelocity = root.AssemblyLinearVelocity:Lerp(desiredVel, 0.8)
+        end
+
+        local toTarget = targetPos - myPos
+        if toTarget.Magnitude > 0.1 then
+            local goalCF = CFrame.lookAt(myPos, targetPos)
+            local diffCF = root.CFrame:Inverse() * goalCF
+            local rx, ry, rz = diffCF:ToEulerAnglesXYZ()
+            rx = math.clamp(rx, -2.5, 2.5)
+            ry = math.clamp(ry, -2.5, 2.5)
+            rz = math.clamp(rz, -2.5, 2.5)
+            root.AssemblyAngularVelocity = root.CFrame:VectorToWorldSpace(Vector3.new(rx * 42, ry * 42, rz * 42))
+        end
+
+        if M.autoSwingEnabled ~= false and targetDist <= 8 then
+            trySwing()
+        end
+    end)
 
     if M.setBypassVisual then pcall(function() M.setBypassVisual(true) end) end
     if M.mobBtnRefs and M.mobBtnRefs.bypass then pcall(function() M.mobBtnRefs.bypass(true) end) end
@@ -5528,21 +5544,23 @@ function M.stopBypassAimbot()
         pcall(function() M.bypassAimbotConn:Disconnect() end)
         M.bypassAimbotConn = nil
     end
-    M._abTarget = nil
-    M._abEquipped = false
+    M._abSwingCD = false
 
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if root then
         pcall(function()
-            root.Velocity = root.Velocity * 0.3
+            root.AssemblyLinearVelocity = Vector3.zero
             root.AssemblyAngularVelocity = Vector3.zero
         end)
     end
     if hum then
-        hum.AutoRotate = true
+        hum.AutoRotate = (M._abPrevAutoRotate == nil) and true or M._abPrevAutoRotate
+        hum.PlatformStand = false
+        pcall(function() hum:ChangeState(Enum.HumanoidStateType.GettingUp) end)
     end
+    M._abPrevAutoRotate = nil
 
     if M._autoTPWasEnabledForBypass then
         M._autoTPWasEnabledForBypass = false
@@ -9703,6 +9721,7 @@ M.stealBarSize = tonumber(M.stealBarSize) or 420
         if d.fovEnabled ~= nil then M.fovEnabled = d.fovEnabled == true end
         if d.enemyRagdollCdEnabled ~= nil then M.enemyRagdollCdEnabled = d.enemyRagdollCdEnabled == true end
         if d.customToolsEnabled ~= nil then M.customToolsEnabled = d.customToolsEnabled == true end
+        if type(d.skyTheme) == "string" then M.skyTheme = d.skyTheme end
         if d.customSoundsEnabled ~= nil then M.customSoundsEnabled = d.customSoundsEnabled == true end
         if d.customToolSkinBat or d.customToolSkinMedusa then
             M.customToolSkins = M.customToolSkins or {}
@@ -10028,7 +10047,7 @@ function saveCherryConfig()
 
         normalSpeed=M.NS, carrySpeed=M.CS, laggerSpeed=M.LAGGER_SPEED,
         laggerCarrySpeed=M.LAGGER_CARRY_SPEED, bypassSpeed=M.BYPASS_SPEED, bypassCarrySpeed=M.BYPASS_CARRY_SPEED, speedMethod=M.speedMethod, speedUIMode="Original", speedBoosterEnabled=M.speedBoosterEnabled~=false, speedBoosterPath=M.speedBoosterPath or "Normal", speedBoosterPanelOpen=M.speedBoosterPanelOpen==true, grabRadius=M.Steal.StealRadius,
-        stealDuration=M.Steal.StealDuration, stealStopTime=M.Steal.StopTime, stealMode=M.stealMode, antiVoidEnabled=M.antiVoidEnabled==true, antiBatEnabled=M.antiBatEnabled==true, antiDropEnabled=M.antiDropEnabled~=false, noCamCollisionEnabled=M.noCamCollisionEnabled==true, motionBlurEnabled=M.motionBlurEnabled==true, vividGraphicsEnabled=M.vividGraphicsEnabled==true, fovEnabled=M.fovEnabled~=false, enemyRagdollCdEnabled=M.enemyRagdollCdEnabled==true, customToolsEnabled=M.customToolsEnabled==true, customSoundsEnabled=M.customSoundsEnabled==true, customToolSkinBat=(M.customToolSkins and M.customToolSkins.Bat) or "DiamondSword", customToolSkinMedusa=(M.customToolSkins and M.customToolSkins.Medusa) or "GoldenDesertEagle", autoGrabStopTime=M.autoGrabStopTime, autoGrabStopPercent=M.autoGrabStopPercent, autoGrabSetDelayRadius=M.autoGrabSetDelayRadius, semiMode=M.semiMode,
+        stealDuration=M.Steal.StealDuration, stealStopTime=M.Steal.StopTime, stealMode=M.stealMode, antiVoidEnabled=M.antiVoidEnabled==true, antiBatEnabled=M.antiBatEnabled==true, antiDropEnabled=M.antiDropEnabled~=false, noCamCollisionEnabled=M.noCamCollisionEnabled==true, motionBlurEnabled=M.motionBlurEnabled==true, vividGraphicsEnabled=M.vividGraphicsEnabled==true, fovEnabled=M.fovEnabled~=false, enemyRagdollCdEnabled=M.enemyRagdollCdEnabled==true, customToolsEnabled=M.customToolsEnabled==true, customSoundsEnabled=M.customSoundsEnabled==true, customToolSkinBat=(M.customToolSkins and M.customToolSkins.Bat) or "DiamondSword", customToolSkinMedusa=(M.customToolSkins and M.customToolSkins.Medusa) or "GoldenDesertEagle", skyTheme=M.skyTheme or "Off", autoGrabStopTime=M.autoGrabStopTime, autoGrabStopPercent=M.autoGrabStopPercent, autoGrabSetDelayRadius=M.autoGrabSetDelayRadius, semiMode=M.semiMode,
         autoTPHeight=M.autoTPHeight, fovValue=M.fovValue, uiScale=M.uiScale,
         infJumpMode=M.infJumpMode,
         mobileButtonsSize=M.mobileButtonsSize, mobileBtnVisible=M.mobileBtnVisible,
@@ -10279,7 +10298,7 @@ function M.applyChromeTheme()
         local disc = hdr:FindFirstChild("HeaderDiscord") or M.headerDiscordLbl
         if disc and disc:IsA("TextLabel") then
             disc.Visible = true
-            disc.Text = "discord.gg/xss7VmC2D"
+            disc.Text = "discord.gg/FQRR8hNQq"
             disc.Position = UDim2.new(0, 62, 0, 36)
             disc.Size = UDim2.new(1, -110, 0, 18)
             disc.BackgroundTransparency = 1
@@ -12851,7 +12870,7 @@ end
     discordLbl.Position = UDim2.new(0, 58, 0, 34)
     discordLbl.Size = UDim2.new(1, -110, 0, 20)
     discordLbl.BackgroundTransparency = 1
-    discordLbl.Text = "discord.gg/xss7VmC2D"
+    discordLbl.Text = "discord.gg/FQRR8hNQq"
     discordLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
     discordLbl.TextTransparency = 0
     discordLbl.TextStrokeTransparency = 1
@@ -12878,7 +12897,7 @@ end
         end
         if discordLbl and discordLbl.Parent then
             discordLbl.Visible = true
-            discordLbl.Text = "discord.gg/xss7VmC2D"
+            discordLbl.Text = "discord.gg/FQRR8hNQq"
             discordLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
             discordLbl.TextTransparency = 0
             discordLbl.TextSize = 14
@@ -14405,6 +14424,18 @@ end
     cherryESPState.HighlightESP = false
 
     uiSectionHeader(PUtil, "MISC")
+
+    -- Sky Theme selector (Ambitious presets, < > like custom tools)
+    do
+        local skyList = M.SKY_PRESETS_LIST or {"Off","Night","Aurora","Sunset","Galaxy","Cyber","Sakura"}
+        local cur = M.skyTheme or "Off"
+        local skyIdx = 1
+        for i, n in ipairs(skyList) do if n == cur then skyIdx = i break end end
+        local _, setSkyUI = uiChoiceRow(PUtil, "Sky Theme", skyList, skyIdx, function(name)
+            if M.setSkyTheme then M.setSkyTheme(name) end
+        end)
+        M.setSkyThemeVisual = setSkyUI
+    end
 
     local _, setCustomTools = uiToggleRow(PUtil, "Custom Tools", M.customToolsEnabled == true, function(on)
         if M.setCustomTools then M.setCustomTools(on) end
@@ -18269,6 +18300,252 @@ task.defer(function()
         if M.fovEnabled == false and M.setFovEnabled then M.setFovEnabled(false)
         elseif M.applyFOV then M.applyFOV() end
         if M.enemyRagdollCdEnabled and M.setEnemyRagdollCd then M.setEnemyRagdollCd(true) end
+
+-- ===================== SKY THEME (Ambitious presets + < > selector) =====================
+do
+    local Lighting = game:GetService("Lighting")
+    M.skyTheme = M.skyTheme or "Off"
+    M.SKY_PRESETS_LIST = {
+        "Off","Night","Aurora","Sunset","Galaxy","Cyber","Sakura","Pink Night",
+        "Blood Moon","Emerald Dawn","Volcanic","Arctic","Midnight Ocean","Vaporwave","Toxic","Solar Eclipse",
+        "Hellscape","Heaven","Storm","Sunrise","Deep Space","Lavender Dream","Inferno","Mint Sky",
+        "Clear Sky","Golden Hour","Moonlight","Cotton Candy","Monochrome","Rainbow",
+        "Ultraviolet","Blue Hour","Nebula","Thunderhead","Fuchsia Dawn",
+        "Ice Cavern","Crimson Dusk","Neon Rain","Copper Sky","Pearl Rose",
+        "Red Giant","Moonfall","Ashfall","Marshlight","Abyss",
+        "Timelapse","Lightning","Pulsar","Ionosphere","Midnight Sun",
+        "Polar Night","Infrared","Sepia","Chrome","Supernova",
+        "Mars","Titan","Dreamcore","Ember Night",
+    }
+    local function C3(t)
+        if type(t) ~= "table" then return Color3.new(1,1,1) end
+        return Color3.fromRGB(t[1] or 255, t[2] or 255, t[3] or 255)
+    end
+    M.SKY_PRESETS = {
+        ["Off"] = {kind="off"},
+        ["Night"] = {clock=22, brightness=2, ambient={110,100,130}, outAmb={120,110,140}, sky={stars=4000, moon=18, sun=0, moonTex=true}, atm={dens=0.45, color={120,60,180}, decay={60,20,100}, glare=0.5, haze=1.2}},
+        ["Aurora"] = {clock=14, brightness=2.2, ambient={140,130,150}, outAmb={150,140,160}, atm={dens=0.35, color={220,140,200}, decay={200,120,160}, glare=1.2, haze=1.6}, clouds={cover=0.5, dens=0.5, color={240,230,245}}},
+        ["Sunset"] = {clock=17.2, brightness=2.5, ambient={170,120,100}, outAmb={180,130,110}, sky={stars=0, sun=25, moon=0}, atm={dens=0.5, color={255,130,60}, decay={255,80,30}, glare=2, haze=2.5}, clouds={cover=0.55, dens=0.55, color={255,200,140}}},
+        ["Galaxy"] = {clock=0, brightness=1.5, ambient={70,60,100}, outAmb={80,70,110}, sky={stars=10000, moon=30, sun=0}, atm={dens=0.15, color={40,20,80}, decay={20,10,50}, glare=0.3, haze=0.5}},
+        ["Cyber"] = {clock=21, brightness=2.2, ambient={90,130,170}, outAmb={100,140,180}, sky={stars=2000, moon=12}, atm={dens=0.4, color={0,200,255}, decay={150,0,255}, glare=2, haze=2}, clouds={cover=0.4, dens=0.6, color={100,200,255}}},
+        ["Sakura"] = {clock=11, brightness=3.5, ambient={170,150,160}, outAmb={180,160,170}, sky={sun=8}, atm={dens=0.3, color={255,200,220}, decay={255,170,200}, glare=1, haze=1.5}, clouds={cover=0.6, dens=0.4, color={255,250,252}}},
+        ["Pink Night"] = {clock=23, brightness=2.2, ambient={120,60,110}, outAmb={140,70,120}, sky={stars=5000, moon=22, sun=0, moonTex=true}, atm={dens=0.5, color={255,80,180}, decay={140,30,100}, glare=0.7, haze=1.4}, clouds={cover=0.3, dens=0.5, color={180,90,150}}},
+        ["Blood Moon"] = {clock=22.5, brightness=1.4, ambient={120,50,50}, outAmb={130,60,60}, sky={stars=1500, moon=28, sun=0, moonTex=true}, atm={dens=0.5, color={180,50,50}, decay={100,30,30}, glare=0.9, haze=1.5}, clouds={cover=0.4, dens=0.55, color={110,40,40}}},
+        ["Emerald Dawn"] = {clock=6.5, brightness=2.8, ambient={130,170,140}, outAmb={140,180,150}, sky={sun=18, moon=0, stars=0}, atm={dens=0.4, color={80,200,140}, decay={40,150,90}, glare=1.8, haze=2.2}, clouds={cover=0.5, dens=0.5, color={200,255,220}}},
+        ["Volcanic"] = {clock=18.5, brightness=2.0, ambient={160,80,50}, outAmb={170,90,60}, sky={sun=20, stars=500}, atm={dens=0.55, color={220,90,30}, decay={160,40,20}, glare=2.2, haze=2.5}, clouds={cover=0.7, dens=0.7, color={80,40,30}}},
+        ["Arctic"] = {clock=12, brightness=3.2, ambient={180,200,220}, outAmb={190,210,230}, sky={sun=12, stars=0}, atm={dens=0.25, color={170,215,255}, decay={140,180,220}, glare=1.5, haze=1.2}, clouds={cover=0.45, dens=0.4, color={230,240,255}}},
+        ["Midnight Ocean"] = {clock=23.5, brightness=1.8, ambient={40,70,110}, outAmb={50,80,120}, sky={stars=6000, moon=16, sun=0}, atm={dens=0.4, color={30,80,160}, decay={10,40,90}, glare=0.6, haze=1.3}, clouds={cover=0.35, dens=0.5, color={40,70,120}}},
+        ["Vaporwave"] = {clock=20, brightness=2.4, ambient={140,80,150}, outAmb={150,90,160}, sky={stars=3000, moon=14}, atm={dens=0.45, color={255,100,220}, decay={80,180,255}, glare=2, haze=2}, clouds={cover=0.5, dens=0.55, color={255,150,230}}},
+        ["Toxic"] = {clock=15, brightness=2.6, ambient={120,160,80}, outAmb={130,170,90}, sky={sun=15}, atm={dens=0.5, color={150,210,90}, decay={80,140,40}, glare=1.5, haze=2}, clouds={cover=0.6, dens=0.65, color={140,200,80}}},
+        ["Solar Eclipse"] = {clock=12, brightness=0.8, ambient={40,40,50}, outAmb={50,50,60}, sky={sun=5, stars=2000, moon=22}, atm={dens=0.6, color={255,150,40}, decay={40,30,20}, glare=0.3, haze=1.8}},
+        ["Hellscape"] = {clock=19, brightness=2.2, ambient={150,50,30}, outAmb={160,60,40}, sky={sun=22, stars=0}, atm={dens=0.6, color={210,50,20}, decay={120,20,10}, glare=2.5, haze=2.8}, clouds={cover=0.8, dens=0.75, color={60,20,15}}},
+        ["Heaven"] = {clock=10, brightness=4, ambient={220,220,210}, outAmb={230,230,220}, sky={sun=10, stars=0}, atm={dens=0.2, color={255,250,225}, decay={240,230,200}, glare=1.2, haze=0.8}, clouds={cover=0.7, dens=0.35, color={255,255,255}}},
+        ["Storm"] = {clock=16, brightness=1.5, ambient={90,95,110}, outAmb={100,105,120}, sky={sun=8, stars=0}, atm={dens=0.7, color={90,95,115}, decay={50,55,70}, glare=0.4, haze=2.5}, clouds={cover=0.95, dens=0.9, color={70,75,90}}},
+        ["Sunrise"] = {clock=6.2, brightness=2.8, ambient={180,140,100}, outAmb={190,150,110}, sky={sun=20, stars=0}, atm={dens=0.45, color={255,180,100}, decay={255,120,60}, glare=2, haze=2.2}, clouds={cover=0.5, dens=0.5, color={255,210,160}}},
+        ["Deep Space"] = {clock=0, brightness=1.0, ambient={30,20,50}, outAmb={40,30,60}, sky={stars=12000, moon=0, sun=0}, atm={dens=0.1, color={20,10,45}, decay={10,5,25}, glare=0.2, haze=0.3}},
+        ["Lavender Dream"] = {clock=21, brightness=2.3, ambient={150,130,180}, outAmb={160,140,190}, sky={stars=4000, moon=14}, atm={dens=0.4, color={190,160,255}, decay={120,90,180}, glare=1.2, haze=1.6}, clouds={cover=0.4, dens=0.45, color={210,190,255}}},
+        ["Inferno"] = {clock=18, brightness=2.5, ambient={180,90,40}, outAmb={190,100,50}, sky={sun=22}, atm={dens=0.55, color={225,100,40}, decay={180,50,20}, glare=2.5, haze=2.5}, clouds={cover=0.6, dens=0.7, color={100,40,20}}},
+        ["Mint Sky"] = {clock=11, brightness=3.2, ambient={160,210,190}, outAmb={170,220,200}, sky={sun=12}, atm={dens=0.3, color={165,250,215}, decay={120,200,170}, glare=1.3, haze=1.2}, clouds={cover=0.5, dens=0.4, color={200,255,230}}},
+        ["Clear Sky"] = {clock=13, brightness=3.5, ambient={170,190,220}, outAmb={180,200,230}, sky={sun=14, stars=0}, atm={dens=0.2, color={110,190,255}, decay={90,160,220}, glare=1.5, haze=0.8}, clouds={cover=0.25, dens=0.3, color={255,255,255}}},
+        ["Golden Hour"] = {clock=17.5, brightness=2.8, ambient={200,160,100}, outAmb={210,170,110}, sky={sun=22}, atm={dens=0.45, color={255,190,110}, decay={255,140,60}, glare=2.2, haze=2.2}, clouds={cover=0.4, dens=0.45, color={255,220,160}}},
+        ["Moonlight"] = {clock=23, brightness=1.6, ambient={100,120,150}, outAmb={110,130,160}, sky={stars=5000, moon=20, sun=0, moonTex=true}, atm={dens=0.35, color={170,190,225}, decay={80,100,140}, glare=0.5, haze=1.0}},
+        ["Cotton Candy"] = {clock=10, brightness=3.0, ambient={200,170,190}, outAmb={210,180,200}, sky={sun=10}, atm={dens=0.35, color={255,180,225}, decay={220,150,200}, glare=1.2, haze=1.5}, clouds={cover=0.55, dens=0.4, color={255,230,245}}},
+        ["Monochrome"] = {clock=14, brightness=2.0, ambient={140,140,140}, outAmb={150,150,150}, sky={sun=12, stars=0}, atm={dens=0.3, color={152,152,152}, decay={100,100,100}, glare=0.8, haze=1.0}, clouds={cover=0.5, dens=0.5, color={180,180,180}}},
+        ["Rainbow"] = {clock=12, brightness=3.0, ambient={180,150,180}, outAmb={190,160,190}, sky={sun=14}, atm={dens=0.35, color={255,90,120}, decay={80,180,255}, glare=1.8, haze=1.5}, clouds={cover=0.4, dens=0.4, color={255,200,220}}},
+        ["Ultraviolet"] = {clock=22, brightness=1.8, ambient={80,40,120}, outAmb={90,50,130}, sky={stars=7000, moon=10, sun=0}, atm={dens=0.4, color={150,40,240}, decay={60,10,120}, glare=1.5, haze=1.4}},
+        ["Blue Hour"] = {clock=6, brightness=2.0, ambient={80,110,160}, outAmb={90,120,170}, sky={sun=5, stars=1000}, atm={dens=0.4, color={80,120,190}, decay={40,70,130}, glare=1.0, haze=1.6}, clouds={cover=0.45, dens=0.5, color={120,150,200}}},
+        ["Nebula"] = {clock=0, brightness=1.6, ambient={90,50,110}, outAmb={100,60,120}, sky={stars=9000, moon=0, sun=0}, atm={dens=0.3, color={190,70,205}, decay={80,30,120}, glare=1.2, haze=1.0}},
+        ["Thunderhead"] = {clock=15, brightness=1.8, ambient={110,120,150}, outAmb={120,130,160}, sky={sun=10}, atm={dens=0.65, color={130,145,215}, decay={60,70,110}, glare=0.6, haze=2.2}, clouds={cover=0.9, dens=0.85, color={80,90,120}}},
+        ["Fuchsia Dawn"] = {clock=6, brightness=2.6, ambient={180,80,140}, outAmb={190,90,150}, sky={sun=18}, atm={dens=0.45, color={255,45,160}, decay={180,30,100}, glare=1.8, haze=2.0}, clouds={cover=0.5, dens=0.5, color={255,150,200}}},
+        ["Ice Cavern"] = {clock=12, brightness=2.4, ambient={150,190,210}, outAmb={160,200,220}, sky={sun=8, stars=0}, atm={dens=0.5, color={150,215,240}, decay={100,160,190}, glare=1.0, haze=1.8}, clouds={cover=0.6, dens=0.55, color={200,230,245}}},
+        ["Crimson Dusk"] = {clock=18.8, brightness=2.0, ambient={150,50,70}, outAmb={160,60,80}, sky={sun=18, stars=500}, atm={dens=0.5, color={200,50,80}, decay={120,20,40}, glare=1.8, haze=2.2}, clouds={cover=0.55, dens=0.6, color={100,30,50}}},
+        ["Neon Rain"] = {clock=21, brightness=2.2, ambient={40,120,130}, outAmb={50,130,140}, sky={stars=2500, moon=8}, atm={dens=0.5, color={0,230,210}, decay={0,120,150}, glare=2.0, haze=2.0}, clouds={cover=0.7, dens=0.7, color={30,80,90}}},
+        ["Copper Sky"] = {clock=17, brightness=2.4, ambient={170,120,80}, outAmb={180,130,90}, sky={sun=20}, atm={dens=0.45, color={200,115,60}, decay={160,80,40}, glare=1.8, haze=2.0}, clouds={cover=0.45, dens=0.5, color={200,150,100}}},
+        ["Pearl Rose"] = {clock=10, brightness=3.0, ambient={210,190,200}, outAmb={220,200,210}, sky={sun=11}, atm={dens=0.3, color={255,215,228}, decay={230,180,200}, glare=1.2, haze=1.2}, clouds={cover=0.5, dens=0.35, color={255,240,248}}},
+        ["Red Giant"] = {clock=16, brightness=2.0, ambient={160,70,50}, outAmb={170,80,60}, sky={sun=28, stars=0}, atm={dens=0.55, color={215,75,45}, decay={140,40,25}, glare=2.5, haze=2.5}},
+        ["Moonfall"] = {clock=22, brightness=1.7, ambient={120,140,170}, outAmb={130,150,180}, sky={stars=4500, moon=25, sun=0, moonTex=true}, atm={dens=0.35, color={185,200,235}, decay={90,110,150}, glare=0.6, haze=1.1}},
+        ["Ashfall"] = {clock=15, brightness=1.5, ambient={100,95,90}, outAmb={110,105,100}, sky={sun=8}, atm={dens=0.7, color={112,104,98}, decay={60,55,50}, glare=0.3, haze=2.5}, clouds={cover=0.9, dens=0.85, color={70,65,60}}},
+        ["Marshlight"] = {clock=18, brightness=1.9, ambient={80,110,90}, outAmb={90,120,100}, sky={sun=10, stars=800}, atm={dens=0.55, color={96,150,105}, decay={40,80,50}, glare=0.8, haze=2.0}, clouds={cover=0.65, dens=0.7, color={60,90,70}}},
+        ["Abyss"] = {clock=0, brightness=0.9, ambient={20,40,50}, outAmb={25,45,55}, sky={stars=3000, moon=0, sun=0}, atm={dens=0.5, color={15,70,80}, decay={5,30,40}, glare=0.3, haze=1.5}},
+        ["Timelapse"] = {clock=12, brightness=2.5, ambient={150,140,130}, outAmb={160,150,140}, sky={sun=16}, atm={dens=0.35, color={200,180,160}, decay={150,130,110}, glare=1.5, haze=1.5}, clouds={cover=0.5, dens=0.5, color={220,210,200}}},
+        ["Lightning"] = {clock=19.2, brightness=1.6, ambient={95,100,125}, outAmb={105,110,135}, sky={sun=0, stars=0, moon=0}, atm={dens=0.68, color={160,175,255}, decay={40,44,66}, glare=0, haze=2.8}, clouds={cover=0.95, dens=0.92, color={62,66,88}}},
+        ["Pulsar"] = {clock=0, brightness=1.8, ambient={70,90,150}, outAmb={80,100,160}, sky={stars=11000, moon=0, sun=0}, atm={dens=0.25, color={60,100,235}, decay={200,220,255}, glare=2, haze=1}},
+        ["Ionosphere"] = {clock=1.2, brightness=1.7, ambient={100,155,110}, outAmb={110,165,120}, sky={stars=8000, moon=8, sun=0}, atm={dens=0.42, color={60,235,140}, decay={18,85,45}, glare=1.8, haze=1.5}},
+        ["Midnight Sun"] = {clock=0, brightness=2.6, ambient={215,185,140}, outAmb={225,195,150}, sky={sun=20, stars=0, moon=0}, lat=89, atm={dens=0.42, color={255,190,110}, decay={235,150,90}, glare=2.2, haze=2.2}, clouds={cover=0.4, dens=0.45, color={255,225,190}}},
+        ["Polar Night"] = {clock=0, brightness=1.2, ambient={60,80,110}, outAmb={70,90,120}, sky={stars=8000, moon=18, sun=0}, lat=89, atm={dens=0.4, color={80,100,150}, decay={30,50,90}, glare=0.4, haze=1.2}},
+        ["Infrared"] = {clock=14, brightness=2.0, ambient={140,50,50}, outAmb={150,60,60}, sky={sun=16}, atm={dens=0.45, color={220,40,40}, decay={100,20,20}, glare=1.5, haze=1.8}},
+        ["Sepia"] = {clock=14, brightness=2.2, ambient={160,140,100}, outAmb={170,150,110}, sky={sun=14}, atm={dens=0.35, color={180,150,90}, decay={140,110,60}, glare=1.0, haze=1.3}, clouds={cover=0.4, dens=0.4, color={200,180,140}}},
+        ["Chrome"] = {clock=13, brightness=3.5, ambient={200,200,210}, outAmb={210,210,220}, sky={sun=16, stars=0}, atm={dens=0.2, color={200,210,220}, decay={160,170,180}, glare=2.0, haze=0.6}},
+        ["Supernova"] = {clock=12, brightness=4.5, ambient={220,200,180}, outAmb={230,210,190}, sky={sun=30, stars=2000}, atm={dens=0.25, color={255,200,100}, decay={255,100,40}, glare=3.0, haze=1.5}},
+        ["Mars"] = {clock=14, brightness=2.0, ambient={150,90,60}, outAmb={160,100,70}, sky={sun=18, stars=500}, atm={dens=0.5, color={180,90,50}, decay={120,50,30}, glare=1.5, haze=2.0}, clouds={cover=0.3, dens=0.4, color={160,100,70}}},
+        ["Titan"] = {clock=10, brightness=1.5, ambient={100,90,60}, outAmb={110,100,70}, sky={sun=10}, atm={dens=0.75, color={160,140,80}, decay={80,70,40}, glare=0.5, haze=3.0}, clouds={cover=0.85, dens=0.8, color={90,80,50}}},
+        ["Dreamcore"] = {clock=15, brightness=2.8, ambient={160,140,180}, outAmb={170,150,190}, sky={sun=12, stars=1000}, atm={dens=0.4, color={200,160,220}, decay={140,100,180}, glare=1.5, haze=1.8}, clouds={cover=0.55, dens=0.5, color={230,200,255}}},
+        ["Ember Night"] = {clock=21.5, brightness=1.8, ambient={120,60,40}, outAmb={130,70,50}, sky={stars=3500, moon=12, sun=0}, atm={dens=0.5, color={200,80,40}, decay={100,30,15}, glare=1.2, haze=1.8}, clouds={cover=0.4, dens=0.55, color={80,40,25}}},
+    }
+
+    local skyObjs = {}
+    local skyConns = {}
+    local originalSky = {}
+    local function clearSkyConns()
+        for _, c in ipairs(skyConns) do pcall(function() c:Disconnect() end) end
+        skyConns = {}
+    end
+    local function clearSkyObjs()
+        for _, o in ipairs(skyObjs) do pcall(function() if o and o.Parent then o:Destroy() end end) end
+        skyObjs = {}
+        for _, o in ipairs(Lighting:GetChildren()) do
+            if o:GetAttribute("_ASTRASky") then pcall(function() o:Destroy() end) end
+        end
+        local terrain = workspace:FindFirstChildOfClass("Terrain")
+        if terrain then
+            for _, o in ipairs(terrain:GetChildren()) do
+                if o:GetAttribute("_ASTRASky") then pcall(function() o:Destroy() end) end
+            end
+        end
+    end
+    local function saveOriginal()
+        if #originalSky > 0 then return end
+        local function save(obj, parent)
+            if not obj then return end
+            local d = { class = obj.ClassName, parent = parent, props = {} }
+            if obj:IsA("Sky") then
+                d.props.StarCount = obj.StarCount
+                d.props.MoonAngularSize = obj.MoonAngularSize
+                d.props.SunAngularSize = obj.SunAngularSize
+                d.props.MoonTextureId = obj.MoonTextureId
+            elseif obj:IsA("Atmosphere") then
+                d.props.Density, d.props.Color, d.props.Decay = obj.Density, obj.Color, obj.Decay
+                d.props.Glare, d.props.Haze = obj.Glare, obj.Haze
+            elseif obj:IsA("Clouds") then
+                d.props.Cover, d.props.Density, d.props.Color = obj.Cover, obj.Density, obj.Color
+            end
+            table.insert(originalSky, d)
+        end
+        save(Lighting:FindFirstChildWhichIsA("Sky"), Lighting)
+        save(Lighting:FindFirstChildWhichIsA("Atmosphere"), Lighting)
+        local terrain = workspace:FindFirstChildOfClass("Terrain")
+        if terrain then save(terrain:FindFirstChildWhichIsA("Clouds"), terrain) end
+    end
+    local function restoreOriginal()
+        for _, d in ipairs(originalSky) do
+            if d.parent then
+                local ok, obj = pcall(function() return Instance.new(d.class) end)
+                if ok and obj then
+                    for k, v in pairs(d.props) do pcall(function() obj[k] = v end) end
+                    obj.Parent = d.parent
+                end
+            end
+        end
+        originalSky = {}
+    end
+    local function removeOriginal()
+        for _, o in ipairs(Lighting:GetChildren()) do
+            if (o:IsA("Sky") or o:IsA("Atmosphere")) and not o:GetAttribute("_ASTRASky") then
+                pcall(function() o:Destroy() end)
+            end
+        end
+        local terrain = workspace:FindFirstChildOfClass("Terrain")
+        if terrain then
+            for _, o in ipairs(terrain:GetChildren()) do
+                if o:IsA("Clouds") and not o:GetAttribute("_ASTRASky") then
+                    pcall(function() o:Destroy() end)
+                end
+            end
+        end
+    end
+
+    function M.applySkyTheme(mode)
+        mode = tostring(mode or "Off")
+        if not M.SKY_PRESETS[mode] then mode = "Off" end
+        M.skyTheme = mode
+        clearSkyConns()
+        clearSkyObjs()
+        if mode == "Off" then
+            restoreOriginal()
+            pcall(function()
+                Lighting.FogEnd = 100000
+                Lighting.FogStart = 0
+                Lighting.FogColor = Color3.fromRGB(192,192,192)
+                Lighting.Brightness = 2
+                Lighting.ClockTime = 14
+                Lighting.GlobalShadows = true
+                Lighting.ExposureCompensation = 0
+                Lighting.ColorShift_Top = Color3.fromRGB(0,0,0)
+                Lighting.ColorShift_Bottom = Color3.fromRGB(0,0,0)
+                Lighting.GeographicLatitude = 41.733
+            end)
+            return
+        end
+        local preset = M.SKY_PRESETS[mode]
+        saveOriginal()
+        removeOriginal()
+        pcall(function()
+            if preset.clock then Lighting.ClockTime = preset.clock end
+            if preset.brightness then Lighting.Brightness = preset.brightness end
+            if preset.ambient then Lighting.Ambient = C3(preset.ambient) end
+            if preset.outAmb then Lighting.OutdoorAmbient = C3(preset.outAmb) end
+            if preset.lat then Lighting.GeographicLatitude = preset.lat end
+            Lighting.GlobalShadows = true
+        end)
+        if preset.sky then
+            local sky = Instance.new("Sky")
+            sky:SetAttribute("_ASTRASky", true)
+            sky.StarCount = preset.sky.stars or 3000
+            sky.MoonAngularSize = preset.sky.moon or 11
+            sky.SunAngularSize = preset.sky.sun or 11
+            if preset.sky.moonTex then
+                sky.MoonTextureId = "rbxassetid://6444320592"
+            end
+            sky.Parent = Lighting
+            table.insert(skyObjs, sky)
+        end
+        if preset.atm then
+            local a = Instance.new("Atmosphere")
+            a:SetAttribute("_ASTRASky", true)
+            a.Density = preset.atm.dens or 0.3
+            a.Color = C3(preset.atm.color)
+            a.Decay = C3(preset.atm.decay)
+            a.Glare = preset.atm.glare or 0
+            a.Haze = preset.atm.haze or 0
+            a.Parent = Lighting
+            table.insert(skyObjs, a)
+        end
+        if preset.clouds then
+            local terrain = workspace:FindFirstChildOfClass("Terrain")
+            if terrain then
+                local c = Instance.new("Clouds")
+                c:SetAttribute("_ASTRASky", true)
+                c.Cover = preset.clouds.cover or 0.5
+                c.Density = preset.clouds.dens or 0.5
+                c.Color = C3(preset.clouds.color)
+                c.Parent = terrain
+                table.insert(skyObjs, c)
+            end
+        end
+        -- Anti-overwrite: re-apply if game changes lighting props
+        local function lockProp(prop, val)
+            local conn = Lighting:GetPropertyChangedSignal(prop):Connect(function()
+                if M.skyTheme ~= mode then return end
+                pcall(function() Lighting[prop] = val end)
+            end)
+            table.insert(skyConns, conn)
+        end
+        if preset.clock then lockProp("ClockTime", preset.clock) end
+        if preset.brightness then lockProp("Brightness", preset.brightness) end
+        if preset.ambient then lockProp("Ambient", C3(preset.ambient)) end
+        if preset.outAmb then lockProp("OutdoorAmbient", C3(preset.outAmb)) end
+    end
+
+    function M.setSkyTheme(mode)
+        M.applySkyTheme(mode)
+        pcall(function() if saveCherryConfig then saveCherryConfig() end end)
+    end
+end
+
+
+        if M.skyTheme and M.skyTheme ~= "Off" and M.applySkyTheme then
+            pcall(function() M.applySkyTheme(M.skyTheme) end)
+        end
         if M.customToolsEnabled and M.setCustomTools then M.setCustomTools(true) end
         if M.customSoundsEnabled and M.setCustomSounds then M.setCustomSounds(true) end
         if M.antiDieEnabled and M.startAntiDie then M.startAntiDie() end
